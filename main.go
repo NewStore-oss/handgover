@@ -6,6 +6,8 @@ func main() {
 	fmt.Println(message())
 }
 
+const m = "Hello World"
+
 func message() string {
-	return "Hello World"
+	return m
 }
