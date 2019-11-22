@@ -2,11 +2,17 @@
 
 </p>
 <p align="left">
-	<a alt="Travis CI" href="https://travis-ci.org/NewStore/handgover">
-		<img src="https://img.shields.io/travis/NewStore/handgover?logo=Travis&style=flat-square">
+	<a alt="Licence" >
+		<img src="https://img.shields.io/github/license/NewStore-oss/handgover">
+	</a>
+	<a alt="Build" >
+		<img src="https://github.com/newstore-oss/handgover/workflows/Go/badge.svg">
+	</a>
+	<a alt="Go Module" >
+		<img src="https://img.shields.io/github/go-mod/go-version/newstore-oss/handgover">
 	</a>
 	<a alt="Stars" >
-		<img src="https://img.shields.io/github/stars/Newstore/handgover?style=flat-square">
+		<img src="https://img.shields.io/github/stars/Newstore-oss/handgover">
 	</a>
 </p>
 
@@ -118,4 +124,4 @@ Next steps would be to parse each single query parameter to your specific value 
 At this point the question came up "Is there no easier way of doing that?" - The idea of handgover was born :hatching_chick:!
 
 ## Licence
-TBD
+MIT [License](https://github.com/NewStore-oss/handgover/blob/master/LICENSE) Copyright (c) 2019 NewStore GmbH
