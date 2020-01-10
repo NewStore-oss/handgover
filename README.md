@@ -116,6 +116,9 @@ func Pick(req *http.Request, v interface{}) error {
 }
 ```
 
+## Contribution
+Please check out the [contribution guide](https://github.com/NewStore-oss/handgover/blob/master/CONTRIBUTION.md). (Inspired by [Atom](https://github.com/atom/atom/blob/master/CONTRIBUTING.md))
+
 ## Motivation
 When you create a new HTTP endpoint you probably need to get some values from your query. This is done in Go pretty well and you can easy achieve it. But when you look at the return value - it's a *string*.  It turned out that the real world is a little bit different and you may need it as specific type e.g. *integer*.  In one place you want to check it against some condition (e.g. `if count>100`) or forward it to your next component which only accepts a specific type.
 
