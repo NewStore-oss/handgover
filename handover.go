@@ -29,54 +29,53 @@ import (
 	"time"
 )
 
-func setValue(kind reflect.Kind, property reflect.Value, values []string) error {
-	switch kind {
+func setValue(property reflect.Value, values []string) error {
+	switch kind := property.Kind(); kind {
 	case reflect.Ptr:
-		return setPointer(kind, property, values)
+		return setPointer(property, values)
 	case reflect.Slice:
-		return setSlice(kind, property, values)
+		return setSlice(property, values)
 	case reflect.String:
-		return setString(kind, property, values)
+		return setString(property, values)
 	case reflect.Int:
-		return setInt(kind, property, values)
+		return setInt(property, values)
 	case reflect.Int8:
-		return setInt(kind, property, values)
+		return setInt(property, values)
 	case reflect.Int16:
-		return setInt(kind, property, values)
+		return setInt(property, values)
 	case reflect.Int32:
-		return setInt(kind, property, values)
+		return setInt(property, values)
 	case reflect.Int64:
-		return setInt(kind, property, values)
+		return setInt(property, values)
 	case reflect.Uint:
-		return setUInt(kind, property, values)
+		return setUInt(property, values)
 	case reflect.Uint8:
-		return setUInt(kind, property, values)
+		return setUInt(property, values)
 	case reflect.Uint16:
-		return setUInt(kind, property, values)
+		return setUInt(property, values)
 	case reflect.Uint32:
-		return setUInt(kind, property, values)
+		return setUInt(property, values)
 	case reflect.Uint64:
-		return setUInt(kind, property, values)
+		return setUInt(property, values)
 	case reflect.Bool:
-		return setBool(kind, property, values)
+		return setBool(property, values)
 	case reflect.Float32:
-		return setFloat32(kind, property, values)
+		return setFloat32(property, values)
 	case reflect.Float64:
-		return setFloat64(kind, property, values)
+		return setFloat64(property, values)
 	case reflect.Struct:
-		return setStruct(kind, property, values)
+		return setStruct(property, values)
 	default:
 		return fmt.Errorf("unsupported property kind %q", kind)
 	}
 }
 
-func setPointer(_ reflect.Kind, property reflect.Value, values []string) error {
-	underlineType := property.Type().Elem()
-	property.Set(reflect.New(underlineType))
-	return setValue(underlineType.Kind(), property.Elem(), values)
+func setPointer(property reflect.Value, values []string) error {
+	property.Set(reflect.New(property.Type().Elem()))
+	return setValue(property.Elem(), values)
 }
 
-func setStruct(_ reflect.Kind, property reflect.Value, values []string) error {
+func setStruct(property reflect.Value, values []string) error {
 	switch property.Interface().(type) {
 	case time.Time:
 		t, err := time.Parse(time.RFC3339, values[0])
@@ -96,12 +95,12 @@ func setStruct(_ reflect.Kind, property reflect.Value, values []string) error {
 	return nil
 }
 
-func setString(_ reflect.Kind, property reflect.Value, values []string) error {
+func setString(property reflect.Value, values []string) error {
 	property.SetString(values[0])
 	return nil
 }
 
-func setSlice(kind reflect.Kind, property reflect.Value, values []string) error {
+func setSlice(property reflect.Value, values []string) error {
 	var (
 		propertyType        = property.Type()
 		propertyElementKind = propertyType.Elem().Kind()
@@ -122,7 +121,7 @@ func setSlice(kind reflect.Kind, property reflect.Value, values []string) error 
 	)
 
 	for i := 0; i < lenVals; i++ {
-		if err := setValue(propertyElementKind, slice.Index(i), []string{values[i]}); err != nil {
+		if err := setValue(slice.Index(i), []string{values[i]}); err != nil {
 			return err
 		}
 	}
@@ -131,7 +130,7 @@ func setSlice(kind reflect.Kind, property reflect.Value, values []string) error 
 	return nil
 }
 
-func setInt(_ reflect.Kind, property reflect.Value, values []string) error {
+func setInt(property reflect.Value, values []string) error {
 	switch property.Interface().(type) {
 	case time.Duration:
 		d, err := time.ParseDuration(values[0])
@@ -149,7 +148,7 @@ func setInt(_ reflect.Kind, property reflect.Value, values []string) error {
 	return nil
 }
 
-func setUInt(_ reflect.Kind, property reflect.Value, values []string) error {
+func setUInt(property reflect.Value, values []string) error {
 	ui, err := strconv.ParseUint(values[0], 10, 64)
 	if err != nil {
 		return err
@@ -158,7 +157,7 @@ func setUInt(_ reflect.Kind, property reflect.Value, values []string) error {
 	return nil
 }
 
-func setBool(_ reflect.Kind, property reflect.Value, values []string) error {
+func setBool(property reflect.Value, values []string) error {
 	b, err := strconv.ParseBool(values[0])
 	if err != nil {
 		return err
@@ -167,7 +166,7 @@ func setBool(_ reflect.Kind, property reflect.Value, values []string) error {
 	return nil
 }
 
-func setFloat32(_ reflect.Kind, property reflect.Value, values []string) error {
+func setFloat32(property reflect.Value, values []string) error {
 	f, err := strconv.ParseFloat(values[0], 32)
 	if err != nil {
 		return err
@@ -176,7 +175,7 @@ func setFloat32(_ reflect.Kind, property reflect.Value, values []string) error {
 	return nil
 }
 
-func setFloat64(_ reflect.Kind, property reflect.Value, values []string) error {
+func setFloat64(property reflect.Value, values []string) error {
 	f, err := strconv.ParseFloat(values[0], 64)
 	if err != nil {
 		return err
@@ -206,20 +205,26 @@ func (sources From) To(obj interface{}) error {
 		return nil
 	}
 
-	res := analyze(obj)
+	valueOf := reflect.ValueOf(obj)
+	for valueOf.Kind() == reflect.Ptr {
+		valueOf = valueOf.Elem()
+	}
 
-	for _, reflectedProperty := range res.Properties {
+	t := valueOf.Type()
+	for i := 0; i < valueOf.NumField(); i++ {
 		for _, source := range sources {
+			field := t.Field(i)
 
-			tagValue, ok := reflectedProperty.Tag.Lookup(source.Tag)
+			tagValue, ok := field.Tag.Lookup(source.Tag)
 			if !ok {
 				continue
 			}
 
-			property := res.Value.Field(reflectedProperty.Index)
+			property := valueOf.Field(i)
 			if !property.IsValid() || !property.CanSet() {
 				continue
 			}
+
 			values, err := source.Get(tagValue)
 			if err != nil {
 				return newError(tagValue, source.Tag, values, err)
@@ -228,8 +233,7 @@ func (sources From) To(obj interface{}) error {
 			if len(values) == 0 {
 				continue
 			}
-
-			err = setValue(reflectedProperty.Kind, property, values)
+			err = setValue(property, values)
 			if err != nil {
 				return newError(tagValue, source.Tag, values, err)
 			}
