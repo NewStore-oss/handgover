@@ -29,7 +29,7 @@ import (
 	"time"
 )
 
-func setValue(property reflect.Value, values []string) error {
+func setValue(property reflect.Value, values ...string) error {
 	switch kind := property.Kind(); kind {
 	case reflect.Ptr:
 		return setPointer(property, values)
@@ -72,7 +72,7 @@ func setValue(property reflect.Value, values []string) error {
 
 func setPointer(property reflect.Value, values []string) error {
 	property.Set(reflect.New(property.Type().Elem()))
-	return setValue(property.Elem(), values)
+	return setValue(property.Elem(), values...)
 }
 
 func setStruct(property reflect.Value, values []string) error {
@@ -121,7 +121,7 @@ func setSlice(property reflect.Value, values []string) error {
 	)
 
 	for i := 0; i < lenVals; i++ {
-		if err := setValue(slice.Index(i), []string{values[i]}); err != nil {
+		if err := setValue(slice.Index(i), values[i]); err != nil {
 			return err
 		}
 	}
@@ -184,13 +184,33 @@ func setFloat64(property reflect.Value, values []string) error {
 	return nil
 }
 
+type Valuer interface {
+	values() []string
+}
+
+// Values that converts a slice of strings to a Valuer interface.
+func Value(v string) Valuer {
+	return values([]string{v})
+}
+
+// Values that converts a slice of strings to a Valuer interface.
+func Values(v []string) Valuer {
+	return values(v)
+}
+
+type values []string
+
+func (v values) values() []string {
+	return v
+}
+
 // Source defines the source of a given struct field tag.
 //
 // Tag contains the field tag name
 // Get is a function to get the value/values for your given field.
 type Source struct {
 	Tag string
-	Get func(string) ([]string, error)
+	Get func(string) (Valuer, error)
 }
 
 type From []Source
@@ -225,7 +245,13 @@ func (sources From) To(obj interface{}) error {
 				continue
 			}
 
-			values, err := source.Get(tagValue)
+			var values []string
+			v, err := source.Get(tagValue)
+
+			if v != nil {
+				values = v.values()
+			}
+
 			if err != nil {
 				return newError(tagValue, source.Tag, values, err)
 			}
@@ -233,7 +259,8 @@ func (sources From) To(obj interface{}) error {
 			if len(values) == 0 {
 				continue
 			}
-			err = setValue(property, values)
+
+			err = setValue(property, values...)
 			if err != nil {
 				return newError(tagValue, source.Tag, values, err)
 			}

@@ -28,14 +28,58 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestReturnValuerAsNilWithoutError(t *testing.T) {
+	var s struct {
+		String string `foo:"bar"`
+	}
+
+	sources := []Source{
+		{
+			Tag: "foo",
+			Get: func(field string) (Valuer, error) {
+				assert.Equal(t, "bar", field)
+				return nil, nil
+			},
+		},
+	}
+	err := From(sources).To(&s)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "", s.String)
+}
+
+func TestReturnValuerAsNilWithError(t *testing.T) {
+	var s struct {
+		String string `foo:"bar"`
+	}
+
+	sources := []Source{
+		{
+			Tag: "foo",
+			Get: func(field string) (Valuer, error) {
+				assert.Equal(t, "bar", field)
+				return nil, errors.New("test error")
+			},
+		},
+	}
+	err := From(sources).To(&s)
+	assert.Error(t, err)
+
+	parsedErr, ok := FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, "", parsedErr.Value)
+
+	assert.Equal(t, "", s.String)
+}
+
 func TestFillWithNilStruct(t *testing.T) {
 
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"helloworld"}, nil
+				return Value("helloworld"), nil
 			},
 		},
 	}
@@ -62,9 +106,9 @@ func TestFillPointer(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"helloworld"}, nil
+				return Value("helloworld"), nil
 			},
 		},
 	}
@@ -85,16 +129,16 @@ func TestFillSlice(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"hello", "world"}, nil
+				return Values([]string{"hello", "world"}), nil
 			},
 		},
 		{
 			Tag: "john",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "doe", field)
-				return []string{`{ "some": "json" }`}, nil
+				return Value(`{ "some": "json" }`), nil
 			},
 		},
 	}
@@ -117,9 +161,9 @@ func TestFillSliceWithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid", "value"}, nil
+				return Values([]string{"invalid", "value"}), nil
 			},
 		},
 	}
@@ -130,6 +174,7 @@ func TestFillSliceWithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -142,13 +187,12 @@ func TestFillString(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"helloworld"}, nil
+				return Value("helloworld"), nil
 			},
 		},
 	}
-
 	err := From(sources).To(&s)
 	assert.NoError(t, err)
 
@@ -164,9 +208,9 @@ func TestFillTimeDuration(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1h"}, nil
+				return Value("1h"), nil
 			},
 		},
 	}
@@ -184,9 +228,9 @@ func TestFillTimeDurationWithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -197,6 +241,7 @@ func TestFillTimeDurationWithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "1", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 
 }
@@ -210,9 +255,9 @@ func TestFillInt(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -228,9 +273,9 @@ func TestFillIntWithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -238,10 +283,11 @@ func TestFillIntWithInvalidValue(t *testing.T) {
 	err := From(sources).To(&s)
 	assert.Error(t, err)
 
-	parseErr, ok := FromError(err)
+	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
-	assert.Equal(t, "bar", parseErr.Field)
-	assert.Error(t, parseErr.InnerError)
+	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
+	assert.Error(t, parsedErr.InnerError)
 }
 
 func TestFillInt8(t *testing.T) {
@@ -252,9 +298,9 @@ func TestFillInt8(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -271,9 +317,9 @@ func TestFillInt8WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -284,6 +330,7 @@ func TestFillInt8WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -296,9 +343,9 @@ func TestFillInt16(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -316,9 +363,9 @@ func TestFillInt16WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -329,6 +376,7 @@ func TestFillInt16WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -341,9 +389,9 @@ func TestFillInt32(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -361,9 +409,9 @@ func TestFillInt32WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -374,6 +422,7 @@ func TestFillInt32WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -386,9 +435,9 @@ func TestFillInt64(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -406,9 +455,9 @@ func TestFillInt64WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -419,6 +468,7 @@ func TestFillInt64WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -431,9 +481,9 @@ func TestFillUInt(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -451,9 +501,9 @@ func TestFillUIntWithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -464,6 +514,7 @@ func TestFillUIntWithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -476,9 +527,9 @@ func TestFillUInt8(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -496,9 +547,9 @@ func TestFillUInt8WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -509,6 +560,7 @@ func TestFillUInt8WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -521,9 +573,9 @@ func TestFillUInt16(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -541,9 +593,9 @@ func TestFillUInt16WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -554,6 +606,7 @@ func TestFillUInt16WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -566,9 +619,9 @@ func TestFillUInt32(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -586,9 +639,9 @@ func TestFillUInt32WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -599,6 +652,7 @@ func TestFillUInt32WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -611,9 +665,9 @@ func TestFillUInt64(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1"}, nil
+				return Value("1"), nil
 			},
 		},
 	}
@@ -630,9 +684,9 @@ func TestFillUInt64WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -643,6 +697,7 @@ func TestFillUInt64WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -655,9 +710,9 @@ func TestFillBool(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"true"}, nil
+				return Value("true"), nil
 			},
 		},
 	}
@@ -674,9 +729,9 @@ func TestFillFloat32(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1.5"}, nil
+				return Value("1.5"), nil
 			},
 		},
 	}
@@ -693,9 +748,9 @@ func TestFillFloat32WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -706,6 +761,7 @@ func TestFillFloat32WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -717,9 +773,9 @@ func TestFillFloat64(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"1.5"}, nil
+				return Value("1.5"), nil
 			},
 		},
 	}
@@ -736,9 +792,9 @@ func TestFillFloat64WithInvalidValue(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"invalid"}, nil
+				return Value("invalid"), nil
 			},
 		},
 	}
@@ -749,6 +805,7 @@ func TestFillFloat64WithInvalidValue(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, "invalid", parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -762,9 +819,9 @@ func TestFillStruct(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{`{ "hello" : "world" }`}, nil
+				return Value(`{ "hello" : "world" }`), nil
 			},
 		},
 	}
@@ -784,9 +841,9 @@ func TestFillStructWithInvalidJson(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{`{ "hello" : invalidjson`}, nil
+				return Value(`{ "hello" : invalidjson`), nil
 			},
 		},
 	}
@@ -797,6 +854,7 @@ func TestFillStructWithInvalidJson(t *testing.T) {
 	parsedErr, ok := FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
+	assert.Equal(t, `{ "hello" : invalidjson`, parsedErr.Value)
 	assert.Error(t, parsedErr.InnerError)
 }
 
@@ -809,9 +867,9 @@ func TestFillUnsupportedType(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{"helloworld"}, nil
+				return Value("helloworld"), nil
 			},
 		},
 	}
@@ -834,9 +892,9 @@ func TestFillIfSourceReturnsAnError(t *testing.T) {
 	sources := []Source{
 		{
 			Tag: "foo",
-			Get: func(field string) ([]string, error) {
+			Get: func(field string) (Valuer, error) {
 				assert.Equal(t, "bar", field)
-				return []string{}, errors.New("I am a test error")
+				return Value(""), errors.New("I am a test error")
 			},
 		},
 	}

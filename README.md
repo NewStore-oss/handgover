@@ -107,8 +107,8 @@ func Pick(req *http.Request, v interface{}) error {
 	sources := []handgover.Source{
 		{
 			Tag: "query",
-			Get: func(field string) ([]string, error) {
-				return req.URL.Query()[field], nil
+			Get: func(field string) (handgover.Valuer, error) {
+				return handgover.Values(req.URL.Query()[field]), nil
 			},
 		},
 	}
