@@ -198,6 +198,7 @@ func TestFillTimeDurationWithInvalidValue(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "bar", parsedErr.Field)
 	assert.Error(t, parsedErr.InnerError)
+
 }
 
 func TestFillInt(t *testing.T) {
