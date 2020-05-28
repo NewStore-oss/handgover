@@ -66,7 +66,7 @@ package main
 import (
 	"log"
 	"net/http"
-	"github.com/newstore/handgover"
+	"github.com/NewStore-oss/handgover"
 )
 
 type  MyRequest  struct {
@@ -127,4 +127,4 @@ Next steps would be to parse each single query parameter to your specific value 
 At this point the question came up "Is there no easier way of doing that?" - The idea of handgover was born :hatching_chick:!
 
 ## Licence
-MIT [License](https://github.com/NewStore-oss/handgover/blob/master/LICENSE) Copyright (c) 2019 NewStore GmbH
+MIT [License](https://github.com/NewStore-oss/handgover/blob/master/LICENSE) Copyright (c) 2020 NewStore GmbH

@@ -27,11 +27,6 @@ import (
 	"time"
 )
 
-func FromError(err error) (Error, bool) {
-	tErr, ok := err.(Error)
-	return tErr, ok
-}
-
 type Error struct {
 	Field      string
 	Source     string
