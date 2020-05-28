@@ -83,7 +83,6 @@ func setStruct(property reflect.Value, values []string) error {
 			return err
 		}
 		property.Set(reflect.ValueOf(t))
-		return nil
 	default:
 		s := reflect.New(property.Type())
 		err := json.Unmarshal([]byte(values[0]), s.Interface())
@@ -213,10 +212,14 @@ type Source struct {
 	Get func(string) (Valuer, error)
 }
 
-type From []Source
+type Sources []Source
+
+func From(sources []Source) Sources {
+	return sources
+}
 
 // To takes the given sources and try to fill the fields of the given struct.
-func (sources From) To(obj interface{}) error {
+func (sources Sources) To(obj interface{}) error {
 	if obj == nil {
 		return errors.New("given struct to fill is nil")
 	}
