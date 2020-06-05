@@ -233,30 +233,41 @@ func (sources Sources) To(obj interface{}) error {
 		valueOf = valueOf.Elem()
 	}
 
+	return sources.fill(valueOf)
+}
+
+func (sources Sources) fill(valueOf reflect.Value) error {
 	t := valueOf.Type()
 	for i := 0; i < valueOf.NumField(); i++ {
-		for _, source := range sources {
-			field := t.Field(i)
 
+		var (
+			field    = t.Field(i)
+			property = valueOf.Field(i)
+		)
+		if !property.IsValid() || !property.CanSet() {
+			continue
+		}
+
+		if field.Anonymous && property.Kind() != reflect.Ptr {
+			if err := sources.fill(property); err != nil {
+				return err
+			}
+		}
+
+		for _, source := range sources {
 			tagValue, ok := field.Tag.Lookup(source.Tag)
 			if !ok {
 				continue
 			}
 
-			property := valueOf.Field(i)
-			if !property.IsValid() || !property.CanSet() {
-				continue
-			}
-
 			var values []string
 			v, err := source.Get(tagValue)
+			if err != nil {
+				return newError(tagValue, source.Tag, values, err)
+			}
 
 			if v != nil {
 				values = v.values()
-			}
-
-			if err != nil {
-				return newError(tagValue, source.Tag, values, err)
 			}
 
 			if len(values) == 0 {

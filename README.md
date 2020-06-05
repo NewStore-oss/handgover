@@ -31,6 +31,7 @@ handgover is written in go. To analyse the given structs it uses the standard [`
  - time.Duration
  - time.Time (RFC3339)
  - []byte
+ - embedded structs (no pointer support yet)
 
 > **Note**: Every listed type supports *pointer* and *slice* as well.
 

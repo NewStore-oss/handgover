@@ -1003,3 +1003,46 @@ func TestFillIfSourceReturnsAnError(t *testing.T) {
 
 	assert.Equal(t, "hello world", s.String)
 }
+
+func TestFillWithEmbeddedStruct(t *testing.T) {
+
+	type InnerEmbedded struct {
+		IsEmbedded bool `embedded:"bar"`
+	}
+
+	type OuterEmbeeded struct {
+		InnerEmbedded
+		IsEmbedded bool `embedded:"bar"`
+	}
+
+	type UserContext struct {
+		Tenant string
+	}
+
+	var s struct {
+		OuterEmbeeded
+		String string `foo:"bar"`
+	}
+
+	sources := []Source{
+		{
+			Tag: "foo",
+			Get: func(field string) (Valuer, error) {
+				assert.Equal(t, "bar", field)
+				return Value("hello world"), nil
+			},
+		},
+		{
+			Tag: "embedded",
+			Get: func(field string) (Valuer, error) {
+				assert.Equal(t, "bar", field)
+				return Value("true"), nil
+			},
+		},
+	}
+
+	assert.NoError(t, From(sources).To(&s))
+	assert.Equal(t, "hello world", s.String)
+	assert.True(t, s.InnerEmbedded.IsEmbedded)
+	assert.True(t, s.OuterEmbeeded.IsEmbedded)
+}
